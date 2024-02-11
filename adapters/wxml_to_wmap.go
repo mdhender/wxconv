@@ -16,7 +16,7 @@ import (
 // It returns an error if the input is not a known WXML mapping or
 // if there are errors translating between the two mappings.
 // Panics is the input is not a WXML mapping.
-func WXMLToWXX(wxml any) (*wxx.Map, error) {
+func WXMLToWXX(wxml WXML) (*wxx.Map, error) {
 	switch m := wxml.(type) {
 	case *wxml173.Map:
 		return wxmlV173ToWXX(m)

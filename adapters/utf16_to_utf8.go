@@ -1,6 +1,6 @@
 // Copyright (c) 2024 Michael D Henderson. All rights reserved.
 
-package readers
+package adapters
 
 import (
 	"bytes"
@@ -9,8 +9,7 @@ import (
 	"unicode/utf8"
 )
 
-// ReadUTF16 is a helper to extract UTF-16 data from the input.
-func ReadUTF16(data []byte) ([]byte, error) {
+func UTF16ToUTF8(data []byte) ([]byte, error) {
 	if len(data)%2 != 0 {
 		// UTF-16 data must contain an even number of bytes
 		return nil, ErrMissingFinalByte

@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"github.com/mdhender/semver"
 	"github.com/mdhender/wxconv/adapters"
-	"github.com/mdhender/wxconv/readers"
 	"log"
 	"os"
 	"path/filepath"
@@ -107,55 +106,61 @@ func run(inputFile, debugOutputPath string) error {
 	}
 	log.Printf("debug: completed setup checks      in %v\n", time.Now().Sub(step))
 
+	// read input
 	step = time.Now()
 	src, err := os.ReadFile(inputFile)
 	if err != nil {
 		return fmt.Errorf("%s: %w", inputFile, err)
 	}
-	log.Printf("debug: read %s\n", inputFile)
-	log.Printf("debug: completed read input        in %v\n", time.Now().Sub(step))
+	log.Printf("debug: read input                  in %v\n", time.Now().Sub(step))
 
-	// unzip the input
+	// uncompress input and convert to UTF-16
 	step = time.Now()
 	src, err = adapters.GZipToUTF16(src)
 	if err != nil {
 		return fmt.Errorf("%s: %w", inputFile, err)
 	}
-	log.Printf("debug: completed unzip             in %v\n", time.Now().Sub(step))
+	log.Printf("debug: converted gzip to utf-16    in %v\n", time.Now().Sub(step))
 
+	// save UTF-16 input
 	step = time.Now()
 	filename := filepath.Join(debugOutputPath, "input-utf-16.xml")
 	if err = os.WriteFile(filename, src, 0644); err != nil {
 		return err
 	}
-	log.Printf("debug: created %s\n", filename)
-	log.Printf("debug: completed input-utf-16.xml  in %v\n", time.Now().Sub(step))
+	log.Printf("debug: created   input-utf-16.xml  in %v\n", time.Now().Sub(step))
 
 	// convert input from UTF-16 to UTF-8
 	step = time.Now()
-	src, err = readers.ReadUTF16(src)
+	src, err = adapters.UTF16ToUTF8(src)
 	if err != nil {
 		return fmt.Errorf("%s: %w", inputFile, err)
 	}
-	log.Printf("debug: completed utf-16 to utf-8   in %v\n", time.Now().Sub(step))
+	log.Printf("debug: converted utf-16 to utf-8   in %v\n", time.Now().Sub(step))
 
+	// save UTF-8 input
 	step = time.Now()
 	filename = filepath.Join(debugOutputPath, "input-utf-8.xml")
 	if err = os.WriteFile(filename, src, 0644); err != nil {
 		return err
 	}
-	log.Printf("debug: created %s\n", filename)
-	log.Printf("debug: completed input-utf-8.xml   in %v\n", time.Now().Sub(step))
+	log.Printf("debug: created   input-utf-8.xml   in %v\n", time.Now().Sub(step))
 
-	// read and convert the input
+	// convert UTF-8 to WXML
 	step = time.Now()
-	wmap, err := readers.ReadWXML(src)
+	wxml, err := adapters.UTF8ToWXML(src)
 	if err != nil {
-		log.Printf("src %q\n", src[:35])
 		return fmt.Errorf("%s: %w", inputFile, err)
 	}
-	log.Printf("debug: read map from %s %v\n", inputFile, wmap.Version)
-	log.Printf("debug: completed wxml conversion   in %v\n", time.Now().Sub(step))
+	log.Printf("debug: converted utf-8 to wxml     in %v\n", time.Now().Sub(step))
+
+	// convert the WXML to WMAP
+	step = time.Now()
+	wmap, err := adapters.WXMLToWXX(wxml)
+	if err != nil {
+		return fmt.Errorf("%s: %w", inputFile, err)
+	}
+	log.Printf("debug: converted wxml to wmap      in %v\n", time.Now().Sub(step))
 
 	step = time.Now()
 	filename = filepath.Join(debugOutputPath, "input.json")

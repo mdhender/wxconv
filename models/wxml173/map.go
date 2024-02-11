@@ -5,6 +5,11 @@ package wxml173
 
 import "encoding/xml"
 
+// BaseVersion implements the adapter.WXML interface.
+func (m *Map) BaseVersion() string {
+	return m.Version
+}
+
 type Map struct {
 	XMLName xml.Name `xml:"map"`
 

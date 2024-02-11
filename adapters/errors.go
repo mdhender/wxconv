@@ -11,5 +11,11 @@ func (e Error) Error() string {
 }
 
 const (
-	ErrUnsupportedWXMLVersion = Error("unsupported wxml version")
+	ErrMissingBOM               = Error("missing bom")
+	ErrMissingFinalByte         = Error("missing final byte")
+	ErrMissingXMLHeader         = Error("missing xml header")
+	ErrNotBigEndianUTF16Encoded = Error("not big-endian utf-16 encoded")
+	ErrNotImplemented           = Error("not implemented")
+	ErrUnsupportedVersion       = Error("unsupported version")
+	ErrUnsupportedWXMLVersion   = Error("unsupported wxml version")
 )

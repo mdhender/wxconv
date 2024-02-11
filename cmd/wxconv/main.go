@@ -4,15 +4,14 @@
 package main
 
 import (
-	"encoding/json"
 	"flag"
 	"fmt"
 	"github.com/mdhender/semver"
-	"github.com/mdhender/wxconv/adapters"
+	"github.com/mdhender/wxconv"
+	"github.com/mdhender/wxconv/models/wxx"
 	"log"
 	"os"
 	"path/filepath"
-	"time"
 )
 
 var (
@@ -27,14 +26,23 @@ var (
 func main() {
 	log.SetFlags(log.Ltime)
 
+	var debug bool
+	flag.BoolVar(&debug, "debug", debug, "show debug output")
+
 	var showVersion bool
 	flag.BoolVar(&showVersion, "version", showVersion, "show version and quit")
 
-	var importFile string
-	flag.StringVar(&importFile, "import", importFile, "file to load")
+	var importWXXFile string
+	flag.StringVar(&importWXXFile, "import", importWXXFile, ".wxx file to load")
 
-	var exportFile string
-	flag.StringVar(&exportFile, "export", exportFile, "file to create")
+	var importJSONFile string
+	flag.StringVar(&importJSONFile, "import-json", importJSONFile, ".json file to load")
+
+	var exportWXXFile string
+	flag.StringVar(&exportWXXFile, "export", exportWXXFile, ".wxx file to create")
+
+	var exportJSONFile string
+	flag.StringVar(&exportJSONFile, "export-json", exportJSONFile, ".json file to create")
 
 	var debugOutputPath string
 	flag.StringVar(&debugOutputPath, "debug-output-path", debugOutputPath, "path to create debug files in")
@@ -50,10 +58,32 @@ func main() {
 		os.Exit(0)
 	}
 
-	if importFile == "" {
-		log.Fatal("error: you must supply a file to import from\n")
-	} else if exportFile == "" && debugOutputPath == "" {
-		log.Fatal("error: you must supply a file to export to\n")
+	hasJSONImport, hasJSONExport := importJSONFile != "", exportJSONFile != ""
+	hasWXXImport, hasWXXExport := importWXXFile != "", exportWXXFile != ""
+
+	if hasJSONImport && hasWXXImport {
+	} else if hasJSONImport {
+		// input must exist and be a regular file
+		sb, err := os.Stat(importJSONFile)
+		if err != nil {
+			log.Fatalf("error: %v\n", err)
+		} else if sb.IsDir() {
+			log.Fatalf("error: %s: is a directory\n", importJSONFile)
+		} else if !sb.Mode().IsRegular() {
+			log.Fatalf("error: %s: is not a file\n", importJSONFile)
+		}
+	} else if hasWXXImport {
+		// input must exist and be a regular file
+		sb, err := os.Stat(importWXXFile)
+		if err != nil {
+			log.Fatalf("error: %v\n", err)
+		} else if sb.IsDir() {
+			log.Fatalf("error: %s: is a directory\n", importWXXFile)
+		} else if !sb.Mode().IsRegular() {
+			log.Fatalf("error: %s: is not a file\n", importWXXFile)
+		}
+	} else {
+		log.Fatalf("error: you must specify a file to import\n")
 	}
 
 	if debugOutputPath != "" {
@@ -62,175 +92,43 @@ func main() {
 		} else {
 			debugOutputPath = s
 		}
-	}
-
-	if debugOutputPath != "" {
-		log.Printf("importFile      == %s\n", importFile)
-		log.Printf("debugOutputPath == %s\n", debugOutputPath)
-		if err := run(importFile, debugOutputPath); err != nil {
-			log.Fatal(err)
+		sb, err := os.Stat(debugOutputPath)
+		if err != nil {
+			log.Fatalf("%s: %v", debugOutputPath, err)
+		} else if !sb.IsDir() {
+			log.Fatalf("%s: is not a directory\n", debugOutputPath)
 		}
-		log.Printf("debug output completed\n")
-		os.Exit(0)
 	}
 
-	// input must exist and be a regular file
-	if sb, err := os.Stat(importFile); err != nil {
-		log.Fatalf("error: %v\n", err)
-	} else if sb.IsDir() {
-		log.Fatalf("error: %s: is a directory\n", importFile)
-	} else if !sb.Mode().IsRegular() {
-		log.Fatalf("error: %s: is not a file\n", importFile)
+	var m *wxx.Map
+	var err error
+
+	if hasJSONImport {
+		log.Fatalf("error: json import not implemented yet\n")
+	} else if hasWXXImport {
+		m, err = wxconv.ImportWXXFile(importWXXFile, debug, debugOutputPath)
+		if err != nil {
+			log.Printf("import: %s\n", importWXXFile)
+			log.Fatalf("import: %v", err)
+		}
+	} else {
+		log.Fatalf("error: you must specify a file to import\n")
 	}
-}
 
-// run is for development and testing
-func run(inputFile, debugOutputPath string) error {
-	started, step := time.Now(), time.Now()
-
-	step = time.Now()
-	if sb, err := os.Stat(inputFile); err != nil {
-		return fmt.Errorf("%s: %w", inputFile, err)
-	} else if sb.IsDir() {
-		return fmt.Errorf("%s: is directory: %w", inputFile, os.ErrInvalid)
-	} else if !sb.Mode().IsRegular() {
-		return fmt.Errorf("%s: is not a file: %w", inputFile, os.ErrInvalid)
+	if hasJSONExport {
+		if err = wxconv.ExportJSONFile(m, exportJSONFile, true, debugOutputPath); err != nil {
+			log.Printf("export: %s", exportWXXFile)
+			log.Fatalf("export: %v", err)
+		}
+		log.Printf("created %s\n", exportJSONFile)
 	}
-	if debugOutputPath == "" {
-		return fmt.Errorf("missing debug output path: %w", os.ErrInvalid)
+
+	if hasWXXExport {
+		err := wxconv.ExportWXXFile(m, exportWXXFile, debug, debugOutputPath)
+		if err != nil {
+			log.Printf("export: %s", exportWXXFile)
+			log.Fatalf("export: %v", err)
+		}
+		log.Printf("created %s\n", exportWXXFile)
 	}
-	if sb, err := os.Stat(debugOutputPath); err != nil {
-		return fmt.Errorf("%s: %w", debugOutputPath, err)
-	} else if !sb.IsDir() {
-		return fmt.Errorf("%s: is not a directory: %w", debugOutputPath, os.ErrInvalid)
-	}
-	log.Printf("debug: completed setup checks      in %v\n", time.Now().Sub(step))
-
-	// read input
-	step = time.Now()
-	src, err := os.ReadFile(inputFile)
-	if err != nil {
-		return fmt.Errorf("%s: %w", inputFile, err)
-	}
-	log.Printf("debug: read      input             in %v\n", time.Now().Sub(step))
-
-	// uncompress input and convert to UTF-16
-	step = time.Now()
-	src, err = adapters.GZipToUTF16(src)
-	if err != nil {
-		return fmt.Errorf("%s: %w", inputFile, err)
-	}
-	log.Printf("debug: converted gzip to utf-16    in %v\n", time.Now().Sub(step))
-
-	// save UTF-16 input
-	step = time.Now()
-	filename := filepath.Join(debugOutputPath, "input-utf-16.xml")
-	if err = os.WriteFile(filename, src, 0644); err != nil {
-		return err
-	}
-	log.Printf("debug: created   input-utf-16.xml  in %v\n", time.Now().Sub(step))
-
-	// convert input from UTF-16 to UTF-8
-	step = time.Now()
-	src, err = adapters.UTF16ToUTF8(src)
-	if err != nil {
-		return fmt.Errorf("%s: %w", inputFile, err)
-	}
-	log.Printf("debug: converted utf-16 to utf-8   in %v\n", time.Now().Sub(step))
-
-	// save UTF-8 input
-	step = time.Now()
-	filename = filepath.Join(debugOutputPath, "input-utf-8.xml")
-	if err = os.WriteFile(filename, src, 0644); err != nil {
-		return err
-	}
-	log.Printf("debug: created   input-utf-8.xml   in %v\n", time.Now().Sub(step))
-
-	// convert UTF-8 to WXML
-	step = time.Now()
-	wxml, err := adapters.UTF8ToWXML(src)
-	if err != nil {
-		return fmt.Errorf("%s: %w", inputFile, err)
-	}
-	log.Printf("debug: converted utf-8 to wxml     in %v\n", time.Now().Sub(step))
-
-	// convert the WXML to WMAP
-	step = time.Now()
-	wmap, err := adapters.WXMLToWXX(wxml)
-	if err != nil {
-		return fmt.Errorf("%s: %w", inputFile, err)
-	}
-	log.Printf("debug: converted wxml to wmap      in %v\n", time.Now().Sub(step))
-
-	step = time.Now()
-	filename = filepath.Join(debugOutputPath, "input.json")
-	if b, err := json.MarshalIndent(wmap, "", "\t"); err != nil {
-		return err
-	} else if err = os.WriteFile(filename, b, 0644); err != nil {
-		return err
-	}
-	log.Printf("debug: created   input.json        in %v\n", time.Now().Sub(step))
-
-	// todo: manipulate the input?
-
-	step = time.Now()
-	filename = filepath.Join(debugOutputPath, "output.json")
-	if b, err := json.MarshalIndent(wmap, "", "\t"); err != nil {
-		return err
-	} else if err = os.WriteFile(filename, b, 0644); err != nil {
-		return err
-	}
-	log.Printf("debug: created   output.json       in %v\n", time.Now().Sub(step))
-
-	step = time.Now()
-	tmap, err := adapters.WMAPToTMAPv173(wmap)
-	if err != nil {
-		return err
-	}
-	log.Printf("debug: converted wmap to tmap      in %v\n", time.Now().Sub(step))
-
-	step = time.Now()
-	data, err := tmap.Encode()
-	if err != nil {
-		return err
-	}
-	log.Printf("debug: converted tmap to xml       in %v %d\n", time.Now().Sub(step), len(data))
-
-	filename = filepath.Join(debugOutputPath, "output-utf-8.xml")
-	if err = os.WriteFile(filename, data, 0644); err != nil {
-		return err
-	}
-	log.Printf("debug: created   output-utf-8.xml  in %v\n", time.Now().Sub(started))
-
-	step = time.Now()
-	data, err = adapters.UTF8ToUTF16(data)
-	if err != nil {
-		return fmt.Errorf("%s: %w", inputFile, err)
-	}
-	log.Printf("debug: converted utf-8 to utf-16   in %v\n", time.Now().Sub(step))
-
-	step = time.Now()
-	filename = filepath.Join(debugOutputPath, "output-utf-16.xml")
-	if err = os.WriteFile(filename, data, 0644); err != nil {
-		return err
-	}
-	log.Printf("debug: created   output-utf-16.xml in %v\n", time.Now().Sub(step))
-
-	step = time.Now()
-	data, err = adapters.UTF16ToGZip(data)
-	if err != nil {
-		return err
-	}
-	log.Printf("debug: converted utf-16 to gzip    in %v\n", time.Now().Sub(step))
-
-	step = time.Now()
-	filename = filepath.Join(debugOutputPath, "output.wxx")
-	if err = os.WriteFile(filename, data, 0644); err != nil {
-		return err
-	}
-	log.Printf("debug: created   output.wxx        in %v\n", time.Now().Sub(step))
-
-	log.Printf("debug: completed                   in %v\n", time.Now().Sub(started))
-
-	return nil
 }

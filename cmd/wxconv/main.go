@@ -112,7 +112,7 @@ func run(inputFile, debugOutputPath string) error {
 	if err != nil {
 		return fmt.Errorf("%s: %w", inputFile, err)
 	}
-	log.Printf("debug: read input                  in %v\n", time.Now().Sub(step))
+	log.Printf("debug: read      input             in %v\n", time.Now().Sub(step))
 
 	// uncompress input and convert to UTF-16
 	step = time.Now()
@@ -169,8 +169,7 @@ func run(inputFile, debugOutputPath string) error {
 	} else if err = os.WriteFile(filename, b, 0644); err != nil {
 		return err
 	}
-	log.Printf("debug: created %s\n", filename)
-	log.Printf("debug: completed input.json        in %v\n", time.Now().Sub(step))
+	log.Printf("debug: created   input.json        in %v\n", time.Now().Sub(step))
 
 	// todo: manipulate the input?
 
@@ -181,59 +180,55 @@ func run(inputFile, debugOutputPath string) error {
 	} else if err = os.WriteFile(filename, b, 0644); err != nil {
 		return err
 	}
-	log.Printf("debug: completed output.json       in %v\n", time.Now().Sub(step))
-	log.Printf("debug: created %s\n", filename)
+	log.Printf("debug: created   output.json       in %v\n", time.Now().Sub(step))
 
 	step = time.Now()
 	tmap, err := adapters.WMAPToTMAPv173(wmap)
 	if err != nil {
 		return err
 	}
-	log.Printf("debug: completed wmap to tmap      in %v\n", time.Now().Sub(step))
+	log.Printf("debug: converted wmap to tmap      in %v\n", time.Now().Sub(step))
 
 	step = time.Now()
 	data, err := tmap.Encode()
 	if err != nil {
 		return err
 	}
-	log.Printf("debug: completed tmap to xml       in %v %d\n", time.Now().Sub(step), len(data))
+	log.Printf("debug: converted tmap to xml       in %v %d\n", time.Now().Sub(step), len(data))
 
 	filename = filepath.Join(debugOutputPath, "output-utf-8.xml")
 	if err = os.WriteFile(filename, data, 0644); err != nil {
 		return err
 	}
-	log.Printf("created %s\n", filename)
-	log.Printf("debug: completed output-utf-8.xml  in %v\n", time.Now().Sub(started))
+	log.Printf("debug: created   output-utf-8.xml  in %v\n", time.Now().Sub(started))
 
 	step = time.Now()
 	data, err = adapters.UTF8ToUTF16(data)
 	if err != nil {
 		return fmt.Errorf("%s: %w", inputFile, err)
 	}
-	log.Printf("debug: completed utf-8 to utf-16   in %v\n", time.Now().Sub(step))
+	log.Printf("debug: converted utf-8 to utf-16   in %v\n", time.Now().Sub(step))
 
 	step = time.Now()
 	filename = filepath.Join(debugOutputPath, "output-utf-16.xml")
 	if err = os.WriteFile(filename, data, 0644); err != nil {
 		return err
 	}
-	log.Printf("created %s\n", filename)
-	log.Printf("debug: completed output-utf-16.xml in %v\n", time.Now().Sub(step))
+	log.Printf("debug: created   output-utf-16.xml in %v\n", time.Now().Sub(step))
 
 	step = time.Now()
 	data, err = adapters.UTF16ToGZip(data)
 	if err != nil {
 		return err
 	}
-	log.Printf("debug: completed compress xml      in %v\n", time.Now().Sub(step))
+	log.Printf("debug: converted utf-16 to gzip    in %v\n", time.Now().Sub(step))
 
 	step = time.Now()
 	filename = filepath.Join(debugOutputPath, "output.wxx")
 	if err = os.WriteFile(filename, data, 0644); err != nil {
 		return err
 	}
-	log.Printf("created %s\n", filename)
-	log.Printf("debug: completed output.wxx        in %v\n", time.Now().Sub(started))
+	log.Printf("debug: created   output.wxx        in %v\n", time.Now().Sub(step))
 
 	log.Printf("debug: completed                   in %v\n", time.Now().Sub(started))
 

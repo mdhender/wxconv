@@ -26,7 +26,7 @@ var (
 )
 
 func main() {
-	log.SetFlags(log.LUTC | log.Ltime)
+	log.SetFlags(log.Ltime)
 
 	var showVersion bool
 	flag.BoolVar(&showVersion, "version", showVersion, "show version and quit")
@@ -107,31 +107,21 @@ func run(inputFile, debugOutputPath string) error {
 	}
 	log.Printf("debug: completed setup checks      in %v\n", time.Now().Sub(step))
 
-	// open a reader for the input
 	step = time.Now()
-	input, err := os.Open(inputFile)
+	src, err := os.ReadFile(inputFile)
 	if err != nil {
 		return fmt.Errorf("%s: %w", inputFile, err)
 	}
-	defer func() {
-		if input != nil {
-			_ = input.Close()
-			log.Printf("debug: closed  reader for %s\n", inputFile)
-		}
-	}()
-	log.Printf("debug: created reader for %s\n", inputFile)
-	log.Printf("debug: completed input reader      in %v\n", time.Now().Sub(step))
+	log.Printf("debug: read %s\n", inputFile)
+	log.Printf("debug: completed read input        in %v\n", time.Now().Sub(step))
 
 	// unzip the input
 	step = time.Now()
-	src, err := adapters.GZipToUTF16(input)
+	src, err = adapters.GZipToUTF16(src)
 	if err != nil {
 		return fmt.Errorf("%s: %w", inputFile, err)
 	}
 	log.Printf("debug: completed unzip             in %v\n", time.Now().Sub(step))
-	// cleanup the reader
-	_ = input.Close()
-	input = nil
 
 	step = time.Now()
 	filename := filepath.Join(debugOutputPath, "input-utf-16.xml")
